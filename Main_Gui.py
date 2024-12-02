@@ -5,7 +5,7 @@ import os
 import re
 import threading
 import socket
-import signal
+
 
 class PROMPT:
     """
@@ -14,6 +14,7 @@ class PROMPT:
     Attributes:
         master (Tk): The tkinter root window.
     """
+
 
     def __init__(self, master, x=300, y = 200):
         """
@@ -27,6 +28,7 @@ class PROMPT:
         self.master.title('WFTS')
         self.x, self.y = x, y
         self.master.geometry(f"{self.x}x{self.y}")
+        self.master.resizable(False, False)
         self.opener_text = None
         self.font, self.size = 'Arial', 12
         self.Welcome_frame, self.send_btn = None, None
@@ -39,6 +41,7 @@ class PROMPT:
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.port = 12345
         self.thread_id = None
+        self.transfer_rate = 1024 * 1024
 
 
     def kill(self, pid):
@@ -122,9 +125,10 @@ class PROMPT:
 
 
     def Filename_Inquiry_System(self):
-        self.File_names = askopenfilenames(filetypes=[("All Types", '*.*')])[0]
+        self.File_names = askopenfilenames(filetypes=[("All Types", '*.*')])
         while not self.File_names:
-            self.File_names = askopenfilenames(filetypes=[("All Types", '*.*')])[0]
+            self.File_names = askopenfilenames(filetypes=[("All Types", '*.*')])
+        self.File_names = self.File_names[0]
         print(self.File_names)
         self.Send_Window_create_widgets_cont()
 
@@ -193,7 +197,8 @@ class PROMPT:
         self.progressbar.pack()
 
 
-    def send(self, transfer_rate=1024):
+    def send(self):
+        transfer_rate = self.transfer_rate
         self.thread_id = threading.get_ident()
         print(self.thread_id)
         self.socket.bind(("", self.port))
@@ -211,17 +216,20 @@ class PROMPT:
             Transfer_Protocol = "File#" + self.File_names + "#" + str(Size)
             print(Transfer_Protocol)
             object.send(Transfer_Protocol.encode())
+            msg = object.recv(1024).decode()
+            print(msg)
             with open(self.File_names, 'rb') as file:
                 while Size:
-                    if Size > transfer_rate:
+                    if Size >= transfer_rate:
                         object.send(file.read(transfer_rate))
                         Size -= transfer_rate
                         # print('sending')
                     else:
+                        print(Size)
                         object.send(file.read(Size))
                         Size -= Size
                     msg = object.recv(transfer_rate).decode()
-                    # print(Size, msg)
+                    print(Size, msg)
                     percent_complete = ((Ori_Size-Size)/ Ori_Size) * 100
                     print(percent_complete)
                     # Update progress bar and potentially add visual delay for effect
@@ -254,23 +262,29 @@ class PROMPT:
 
 
     def receive_transfer_confirm_cont(self):
-        self.text = self.Ctrl_Entry.get().strip()
-        self.Ctrl_Entry.destroy()
-        self.Ctrl_frame_3.destroy()
-        self.progress = IntVar()
-        self.progressbar = ttk.Progressbar(self.Ctrl_frame_2, maximum=100, variable=self.progress)
-        self.progressbar.pack()
-        # self.T1 = threading.Thread(target=self.Receive)
-        # self.T1.start()
+        if self.Ctrl_Entry:
+            self.text = self.Ctrl_Entry.get().strip()
+            print(self.text)
+            self.Ctrl_Entry.destroy()
+            self.Ctrl_Entry = None
+            self.Ctrl_frame_3.destroy()
+            self.progress = IntVar()
+            self.progressbar = ttk.Progressbar(self.Ctrl_frame_2, maximum=100, variable=self.progress)
+            self.progressbar.pack()
+            self.T1 = threading.Thread(target=self.receive)
+            self.T1.start()
 
 
-    def receive(self, transfer_rate=1024):
+    def receive(self):
+        transfer_rate = self.transfer_rate
+        print(self.text)
         self.socket.connect((self.text, self.port))
-
+        print('CONNECTED')
         self.Ctrl_Label.configure(text=('Connected to IP: ' + self.text).rjust(30, " "))
         self.receive_transfer_confirm_cont()
         self.master.update_idletasks()
         msg_recv = self.socket.recv(transfer_rate).decode().split("#")
+        self.socket.send("Done".encode())
         print(msg_recv)
 
         if msg_recv[0] == 'File':
@@ -279,7 +293,7 @@ class PROMPT:
             Ori_Size = int(msg_recv[-1])
             Size = Ori_Size
 
-            path = pathlib.path(self.Folder, File_Name)
+            path = pathlib.Path(self.Folder, File_Name)
             with open(path, "wb") as file:
                 while Size:
                     if Size > transfer_rate:
@@ -375,6 +389,7 @@ class PROMPT:
         """
         self.welcome_window()
         self.master.mainloop()
+
 
 b = Tk()
 P = PROMPT(b)

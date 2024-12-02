@@ -1,35 +1,40 @@
 import socket
 import os
-import time
+# import time
 
-s = socket.socket()
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+# s.close()
 
 # help(s.recvfrom)
 s.connect(("127.0.0.1", 12345))
 
-msg_recv = s.recv(1024).decode().split("#")
+transfer_rate = 1024
+print("Connected")
+msg_recv = s.recv(transfer_rate).decode().split("#")
+print(msg_recv)
+s.send("Done".encode())
+
 
 if msg_recv[0] == 'File':
     File_Name = os.path.basename(msg_recv[1])
     print(File_Name)
     Size = int(msg_recv[-1])
-    
+
     with open(File_Name, "wb") as file:
         while Size:
-            if Size > 1024:
-                mg = s.recv(1024)
+            if Size > transfer_rate:
+                mg = s.recv(transfer_rate)
                 file.write(mg)
-                Size -= 1024
+                Size -= transfer_rate
                 print('Packet Received')
             else:
                 mg = s.recv(Size)
                 file.write(mg)
                 Size -= Size
                 print('Packet Received')
-            time.sleep(1.5)
+            # time.sleep(1.5)
             s.send("Packet Received".encode())
-# print(msg_recv)
+print(msg_recv)
 
 s.close()
 
-print(os.getcwd())
