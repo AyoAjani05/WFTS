@@ -50,7 +50,3 @@ We welcome contributions from the open-source community to further improve WFTS.
 ### License:
 
 This project is licensed under the MIT license. Please refer to the LICENSE file for more details.
-
-**Note:** This is a general template for a README file. You may need to adapt it to your specific project and implementation details. Consider including screenshots, diagrams, and more detailed technical explanations to enhance the documentation.
- 
-**Remember to replace the placeholders like "License Name" with the actual license you're using.**
